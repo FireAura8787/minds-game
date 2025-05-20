@@ -1,0 +1,169 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Minds Corporation - Ascension</title>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+      touch-action: none;
+      -webkit-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    #controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 20px;
+      z-index: 10;
+    }
+    .btn {
+      width: 60px;
+      height: 60px;
+      background: rgba(255,255,255,0.3);
+      border-radius: 30px;
+      text-align: center;
+      line-height: 60px;
+      font-size: 30px;
+      color: white;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active {
+      background: rgba(255,255,255,0.7);
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <div id="left" class="btn">◀</div>
+    <div id="jump" class="btn">▲</div>
+    <div id="right" class="btn">▶</div>
+  </div>
+
+  <script>
+    const config = {
+      type: Phaser.AUTO,
+      width: 800,
+      height: 600,
+      backgroundColor: '#000000',
+      physics: {
+        default: 'arcade',
+        arcade: {
+          gravity: { y: 800 },
+          debug: false
+        }
+      },
+      scene: {
+        preload,
+        create,
+        update
+      }
+    };
+
+    let player;
+    let cursors;
+    let currentFloor = 1;
+    const maxFloor = 3;
+    let door;
+    let floorText;
+
+    let leftBtn, rightBtn, jumpBtn;
+    let moveLeft = false;
+    let moveRight = false;
+    let jumpPressed = false;
+
+    const game = new Phaser.Game(config);
+
+    function preload() {
+      this.load.image('player', 'https://i.imgur.com/Tq0K6jS.png');
+      this.load.image('door', 'https://i.imgur.com/yU9UN7I.png');
+      this.load.image('boss', 'https://i.imgur.com/9tnr5kA.png');
+      this.load.image('ground', 'https://i.imgur.com/2nCt3Sbl.png');
+    }
+
+    function create() {
+      this.platforms = this.physics.add.staticGroup();
+      for(let i=0; i<13; i++) {
+        this.platforms.create(i*64, 600-32, 'ground').setOrigin(0,0).refreshBody();
+      }
+
+      player = this.physics.add.sprite(100, 450, 'player').setScale(1).setCollideWorldBounds(true);
+      player.body.setSize(32,48);
+      player.setBounce(0.1);
+
+      door = this.physics.add.staticSprite(700, 600 - 80, 'door');
+      floorText = this.add.text(10,10, `Étage: ${currentFloor}`, { fontSize: '24px', fill: '#fff' });
+
+      this.physics.add.collider(player, this.platforms);
+
+      this.physics.add.overlap(player, door, () => {
+        if (currentFloor < maxFloor) {
+          currentFloor++;
+          floorText.setText(`Étage: ${currentFloor}`);
+          player.setPosition(100, 450);
+        } else {
+          floorText.setText('Dernier étage ! Combattez le boss !');
+          door.setVisible(false);
+          spawnBoss(this);
+        }
+      }, null, this);
+
+      leftBtn = document.getElementById('left');
+      rightBtn = document.getElementById('right');
+      jumpBtn = document.getElementById('jump');
+
+      leftBtn.addEventListener('pointerdown', () => moveLeft = true);
+      leftBtn.addEventListener('pointerup', () => moveLeft = false);
+      leftBtn.addEventListener('pointerout', () => moveLeft = false);
+
+      rightBtn.addEventListener('pointerdown', () => moveRight = true);
+      rightBtn.addEventListener('pointerup', () => moveRight = false);
+      rightBtn.addEventListener('pointerout', () => moveRight = false);
+
+      jumpBtn.addEventListener('pointerdown', () => jumpPressed = true);
+      jumpBtn.addEventListener('pointerup', () => jumpPressed = false);
+      jumpBtn.addEventListener('pointerout', () => jumpPressed = false);
+
+      cursors = this.input.keyboard.createCursorKeys();
+    }
+
+    let boss;
+
+    function spawnBoss(scene) {
+      boss = scene.physics.add.sprite(650, 450, 'boss').setScale(1);
+      boss.body.setSize(64, 96);
+      boss.setImmovable(true);
+
+      scene.physics.add.collider(boss, scene.platforms);
+      scene.physics.add.collider(player, boss, () => {
+        floorText.setText("Vous avez été touché par le boss !");
+      });
+    }
+
+    function update() {
+      if (!player) return;
+
+      player.setVelocityX(0);
+
+      if (cursors.left.isDown || moveLeft) {
+        player.setVelocityX(-200);
+      }
+      else if (cursors.right.isDown || moveRight) {
+        player.setVelocityX(200);
+      }
+
+      if ((cursors.up.isDown || jumpPressed) && player.body.touching.down) {
+        player.setVelocityY(-400);
+      }
+    }
+  </script>
+</body>
+</html>
